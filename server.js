@@ -50,7 +50,7 @@ async function startServer() {
     try {
       const { input } = req.body;
       const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" }, { apiVersion: "v1" });
       const result = await model.generateContent(
         `Проанализируй прием пищи: "${input}". Верни ТОЛЬКО JSON без markdown, с полями: name (string), calories (number), protein (number), carbs (number), fat (number), type (одно из: breakfast, lunch, dinner, snack).`
       );
@@ -68,7 +68,7 @@ async function startServer() {
       const model = genAI.getGenerativeModel({
         model: "gemini-1.5-flash",
         systemInstruction: `Ты — профессиональный диетолог. Данные пользователя: ${JSON.stringify(profile)}. История питания: ${JSON.stringify(meals)}. Отвечай на русском.`,
-      });
+      }, { apiVersion: "v1" });
       const result = await model.generateContent(message);
       res.json({ text: result.response.text() });
     } catch (e) {
