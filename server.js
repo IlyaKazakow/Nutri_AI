@@ -48,9 +48,9 @@ async function startServer() {
   // Диагностика: список доступных моделей
   app.get("/api/ai/models", async (req, res) => {
     try {
-      const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-      const { models } = await genAI.listModels();
-      res.json(models.map(m => m.name));
+      const r = await fetch(`https://generativelanguage.googleapis.com/v1/models?key=${process.env.GEMINI_API_KEY}`);
+      const data = await r.json();
+      res.json((data.models || []).map(m => m.name));
     } catch (e) {
       res.status(500).json({ error: String(e) });
     }
