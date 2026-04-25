@@ -45,6 +45,17 @@ async function startServer() {
 
   app.use(express.json());
 
+  // Диагностика: список доступных моделей
+  app.get("/api/ai/models", async (req, res) => {
+    try {
+      const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+      const { models } = await genAI.listModels();
+      res.json(models.map(m => m.name));
+    } catch (e) {
+      res.status(500).json({ error: String(e) });
+    }
+  });
+
   // Gemini endpoints (ключ используется на сервере)
   app.post("/api/ai/analyze", async (req, res) => {
     try {
