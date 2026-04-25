@@ -51,7 +51,7 @@ async function startServer() {
       const { input } = req.body;
       const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
       const response = await ai.models.generateContent({
-        model: "gemini-2.0-flash",
+        model: "gemini-1.5-flash",
         contents: `Проанализируй прием пищи: "${input}". Верни JSON с полями: name, calories, protein, carbs, fat, type (breakfast, lunch, dinner, snack).`,
         config: {
           responseMimeType: "application/json",
@@ -79,7 +79,7 @@ async function startServer() {
       const { message, meals, profile } = req.body;
       const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
       const response = await ai.models.generateContent({
-        model: "gemini-2.0-flash",
+        model: "gemini-1.5-flash",
         contents: message,
         config: {
           systemInstruction: `Ты — профессиональный диетолог. Данные пользователя: ${JSON.stringify(profile)}. История питания: ${JSON.stringify(meals)}. Отвечай на русском.`,
