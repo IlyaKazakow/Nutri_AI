@@ -46,6 +46,22 @@ async function startServer() {
   app.use(express.json());
 
   // Gemini endpoints (ключ используется на сервере)
+  app.post("/api/ai/analyze-image", async (req, res) => {
+    try {
+      const { imageData, mimeType } = req.body;
+      const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+      const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" }, { apiVersion: "v1" });
+      const result = await model.generateContent([
+        { inlineData: { data: imageData, mimeType: mimeType || "image/jpeg" } },
+        `Проанализируй еду на фото. Верни ТОЛЬКО JSON без markdown с полями: name (string, название блюда на русском), calories (number), protein (number, граммы), carbs (number, граммы), fat (number, граммы), type (одно из: breakfast, lunch, dinner, snack).`,
+      ]);
+      const text = result.response.text().trim().replace(/```json|```/g, '');
+      res.json(JSON.parse(text));
+    } catch (e) {
+      res.status(500).json({ error: String(e) });
+    }
+  });
+
   app.post("/api/ai/analyze", async (req, res) => {
     try {
       const { input } = req.body;

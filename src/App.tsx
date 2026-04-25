@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { Plus, MessageSquare, Book, Settings as SettingsIcon, Sparkles, BarChart2 } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Plus, MessageSquare, Book, Settings as SettingsIcon, Sparkles, BarChart2, Camera } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import Diary from './components/Diary';
 import AIChat from './components/AIChat';
@@ -18,6 +18,8 @@ export default function App() {
   const [mealInput, setMealInput] = useState('');
   const [isProcessingMeal, setIsProcessingMeal] = useState(false);
   const [isSpeechSupported, setIsSpeechSupported] = useState(true);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     fetchMeals();
@@ -106,6 +108,54 @@ export default function App() {
     return await getNutritionAdvice(message, meals, profile);
   };
 
+  const compressImage = (file: File): Promise<string> =>
+    new Promise(resolve => {
+      const img = new Image();
+      const url = URL.createObjectURL(file);
+      img.onload = () => {
+        const max = 800;
+        let { width, height } = img;
+        if (width > height && width > max) { height = (height * max) / width; width = max; }
+        else if (height > max) { width = (width * max) / height; height = max; }
+        const canvas = document.createElement('canvas');
+        canvas.width = width; canvas.height = height;
+        canvas.getContext('2d')!.drawImage(img, 0, 0, width, height);
+        URL.revokeObjectURL(url);
+        resolve(canvas.toDataURL('image/jpeg', 0.8));
+      };
+      img.src = url;
+    });
+
+  const handlePhotoSelect = async (e: { target: HTMLInputElement }) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsProcessingMeal(true);
+    try {
+      const base64 = await compressImage(file);
+      setPhotoPreview(base64);
+      const res = await fetch('/api/ai/analyze-image', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ imageData: base64.split(',')[1], mimeType: file.type }),
+      });
+      if (res.ok) {
+        const mealInfo = await res.json();
+        const now = new Date();
+        const addRes = await fetch('/api/meals', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            ...mealInfo,
+            date: now.toLocaleDateString('en-CA'),
+            time: now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
+          }),
+        });
+        if (addRes.ok) { fetchMeals(); setIsAddingMeal(false); setPhotoPreview(null); }
+      }
+    } catch (e) { console.error(e); }
+    finally { setIsProcessingMeal(false); if (fileInputRef.current) fileInputRef.current.value = ''; }
+  };
+
   const triggerVoiceAssistant = () => {
     setActiveTab('chat');
     setTimeout(() => {
@@ -185,20 +235,48 @@ export default function App() {
               onClick={e => e.stopPropagation()}
             >
               <p className="font-bold text-base mb-3">Что вы съели?</p>
+
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                capture="environment"
+                className="hidden"
+                onChange={handlePhotoSelect}
+              />
+
+              {photoPreview && (
+                <img src={photoPreview} className="w-full h-40 object-cover rounded-xl mb-3" alt="preview" />
+              )}
+
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isProcessingMeal}
+                className="w-full flex items-center justify-center gap-2 border-2 border-dashed border-slate-200 text-slate-500 py-3 rounded-xl font-medium mb-3 hover:border-indigo-400 hover:text-indigo-600 transition-colors disabled:opacity-50"
+              >
+                <Camera className="w-5 h-5" />
+                {isProcessingMeal && photoPreview ? 'Анализирую фото...' : 'Сфотографировать еду'}
+              </button>
+
+              <div className="flex items-center gap-2 mb-3">
+                <div className="flex-1 h-px bg-slate-200" />
+                <span className="text-xs text-slate-400">или опишите текстом</span>
+                <div className="flex-1 h-px bg-slate-200" />
+              </div>
+
               <textarea
                 className="w-full border border-slate-200 rounded-xl p-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-indigo-400"
-                rows={3}
-                placeholder="Например: тарелка гречки с курицей и салат"
+                rows={2}
+                placeholder="Например: тарелка гречки с курицей"
                 value={mealInput}
                 onChange={e => setMealInput(e.target.value)}
-                autoFocus
               />
               <button
                 onClick={() => handleAddMeal()}
                 disabled={isProcessingMeal || !mealInput.trim()}
                 className="mt-3 w-full bg-indigo-600 text-white py-3 rounded-xl font-bold disabled:opacity-50"
               >
-                {isProcessingMeal ? 'Анализирую...' : 'Добавить'}
+                {isProcessingMeal && !photoPreview ? 'Анализирую...' : 'Добавить'}
               </button>
             </motion.div>
           </motion.div>
