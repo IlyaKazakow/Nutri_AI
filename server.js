@@ -45,23 +45,12 @@ async function startServer() {
 
   app.use(express.json());
 
-  // Диагностика: список доступных моделей
-  app.get("/api/ai/models", async (req, res) => {
-    try {
-      const r = await fetch(`https://generativelanguage.googleapis.com/v1/models?key=${process.env.GEMINI_API_KEY}`);
-      const data = await r.json();
-      res.json((data.models || []).map(m => m.name));
-    } catch (e) {
-      res.status(500).json({ error: String(e) });
-    }
-  });
-
   // Gemini endpoints (ключ используется на сервере)
   app.post("/api/ai/analyze", async (req, res) => {
     try {
       const { input } = req.body;
       const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" }, { apiVersion: "v1" });
+      const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" }, { apiVersion: "v1" });
       const result = await model.generateContent(
         `Проанализируй прием пищи: "${input}". Верни ТОЛЬКО JSON без markdown, с полями: name (string), calories (number), protein (number), carbs (number), fat (number), type (одно из: breakfast, lunch, dinner, snack).`
       );
@@ -76,7 +65,7 @@ async function startServer() {
     try {
       const { message, meals, profile } = req.body;
       const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" }, { apiVersion: "v1" });
+      const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" }, { apiVersion: "v1" });
       const prompt = `Ты — профессиональный диетолог. Данные пользователя: ${JSON.stringify(profile)}. История питания: ${JSON.stringify(meals)}. Отвечай на русском.\n\nВопрос: ${message}`;
       const result = await model.generateContent(prompt);
       res.json({ text: result.response.text() });
