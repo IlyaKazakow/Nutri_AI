@@ -65,11 +65,9 @@ async function startServer() {
     try {
       const { message, meals, profile } = req.body;
       const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-      const model = genAI.getGenerativeModel({
-        model: "gemini-1.5-flash",
-        systemInstruction: `Ты — профессиональный диетолог. Данные пользователя: ${JSON.stringify(profile)}. История питания: ${JSON.stringify(meals)}. Отвечай на русском.`,
-      }, { apiVersion: "v1" });
-      const result = await model.generateContent(message);
+      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" }, { apiVersion: "v1" });
+      const prompt = `Ты — профессиональный диетолог. Данные пользователя: ${JSON.stringify(profile)}. История питания: ${JSON.stringify(meals)}. Отвечай на русском.\n\nВопрос: ${message}`;
+      const result = await model.generateContent(prompt);
       res.json({ text: result.response.text() });
     } catch (e) {
       res.status(500).json({ error: String(e) });
