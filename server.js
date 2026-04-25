@@ -78,14 +78,14 @@ async function startServer() {
     try {
       const { message, meals, profile } = req.body;
       const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-      const chat = ai.chats.create({
+      const response = await ai.models.generateContent({
         model: "gemini-2.0-flash",
+        contents: message,
         config: {
-          systemInstruction: `Ты — профессиональный диетолог. Данные пользователя: ${JSON.stringify(profile)}, история питания: ${JSON.stringify(meals)}. Отвечай на русском.`,
+          systemInstruction: `Ты — профессиональный диетолог. Данные пользователя: ${JSON.stringify(profile)}. История питания: ${JSON.stringify(meals)}. Отвечай на русском.`,
         },
       });
-      const result = await chat.sendMessage({ message });
-      res.json({ text: result.text });
+      res.json({ text: response.text });
     } catch (e) {
       res.status(500).json({ error: String(e) });
     }
