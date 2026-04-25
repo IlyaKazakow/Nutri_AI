@@ -125,7 +125,7 @@ export default function App() {
         </div>
       </header>
 
-      <main className="max-w-2xl mx-auto px-4 py-6 pb-40">
+      <main className={`mx-auto px-4 py-6 pb-40 ${activeTab === 'chat' ? 'max-w-4xl' : 'max-w-2xl'}`}>
         <AnimatePresence mode="wait">
           {activeTab === 'diary' && <Diary meals={meals} onDelete={handleDeleteMeal} targetCalories={profile.target_calories || 2000} />}
           {activeTab === 'chat' && <AIChat onSendMessage={handleAIChat} />}

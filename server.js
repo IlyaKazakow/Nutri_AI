@@ -4,6 +4,7 @@ import Database from "better-sqlite3";
 import path from "path";
 import { fileURLToPath } from "url";
 import dotenv from "dotenv";
+import { GoogleGenAI, Type } from "@google/genai";
 
 dotenv.config();
 
@@ -43,6 +44,52 @@ async function startServer() {
   const PORT = process.env.PORT || 3000;
 
   app.use(express.json());
+
+  // Gemini endpoints (ключ используется на сервере)
+  app.post("/api/ai/analyze", async (req, res) => {
+    try {
+      const { input } = req.body;
+      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+      const response = await ai.models.generateContent({
+        model: "gemini-2.0-flash",
+        contents: `Проанализируй прием пищи: "${input}". Верни JSON с полями: name, calories, protein, carbs, fat, type (breakfast, lunch, dinner, snack).`,
+        config: {
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              name: { type: Type.STRING },
+              calories: { type: Type.NUMBER },
+              protein: { type: Type.NUMBER },
+              carbs: { type: Type.NUMBER },
+              fat: { type: Type.NUMBER },
+              type: { type: Type.STRING },
+            },
+          },
+        },
+      });
+      res.json(JSON.parse(response.text || "null"));
+    } catch (e) {
+      res.status(500).json({ error: String(e) });
+    }
+  });
+
+  app.post("/api/ai/chat", async (req, res) => {
+    try {
+      const { message, meals, profile } = req.body;
+      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+      const chat = ai.chats.create({
+        model: "gemini-2.0-flash",
+        config: {
+          systemInstruction: `Ты — профессиональный диетолог. Данные пользователя: ${JSON.stringify(profile)}, история питания: ${JSON.stringify(meals)}. Отвечай на русском.`,
+        },
+      });
+      const result = await chat.sendMessage({ message });
+      res.json({ text: result.text });
+    } catch (e) {
+      res.status(500).json({ error: String(e) });
+    }
+  });
 
   app.get("/api/meals", (req, res) => {
     try {
